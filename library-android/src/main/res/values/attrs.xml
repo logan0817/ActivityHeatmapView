@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ActivityHeatmapView">
+        <!--激活色-顶-->
+        <attr name="ahvActiveColorStart" format="color" />
+        <!--激活色-底-->
+        <attr name="ahvActiveColorEnd" format="color" />
+        <!--未激活色-顶-->
+        <attr name="ahvInactiveColorStart" format="color" />
+        <!--未激活色-底-->
+        <attr name="ahvInactiveColorEnd" format="color" />
+
+
+        <!--方块之间间距-->
+        <attr name="ahvCellGap" format="dimension" />
+        <!--方块圆角大小-->
+        <attr name="ahvCellCornerRadius" format="dimension" />
+
+        <!--Y轴 (Label)间距-->
+        <attr name="ahvLabelGridGap" format="dimension" />
+        <!--Y轴 (Label)文字颜色-->
+        <attr name="ahvLabelTextColor" format="color" />
+        <!--Y轴 (Label)文字大小-->
+        <attr name="ahvLabelTextSize" format="dimension" />
+
+        <!--X轴 (Header)间距-->
+        <attr name="ahvHeaderGridGap" format="dimension" />
+        <!--X轴 (Header)文字颜色-->
+        <attr name="ahvHeaderTextColor" format="color" />
+        <!--X轴 (Header)文字大小-->
+        <attr name="ahvHeaderTextSize" format="dimension" />
+    </declare-styleable>
+</resources>

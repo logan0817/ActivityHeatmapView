@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:animateLayoutChanges="true"
+    android:background="@color/white"
+    tools:context="com.logan.heatmapviewapp.MainActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorPrimary"
+        app:layout_constraintTop_toTopOf="parent"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+        app:titleTextColor="@android:color/white" />
+
+
+    <LinearLayout
+        android:id="@+id/llContent1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1c1c1c"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="30dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/toolbar">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:id="@+id/tvDateRange1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Jan 05 - Jan 11"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageButton
+                    android:id="@+id/btnPrevWeek1"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Previous Week"
+                    android:padding="8dp"
+                    android:src="@android:drawable/ic_media_previous"
+                    app:tint="#FFFFFF" />
+
+                <View
+                    android:layout_width="16dp"
+                    android:layout_height="0dp" />
+
+                <ImageButton
+                    android:id="@+id/btnNextWeek1"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Next Week"
+                    android:padding="8dp"
+                    android:src="@android:drawable/ic_media_next"
+                    app:tint="#FFFFFF" />
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <com.logan.heatmapview.ActivityHeatmapView
+            android:id="@+id/activityHeatmapView1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            app:ahvInactiveColorEnd="#2B2A2C"
+            app:ahvInactiveColorStart="#2B2A2C"
+
+            app:ahvActiveColorStart="#116329"
+            app:ahvActiveColorEnd="#2DA44E"
+
+            app:ahvCellGap="9dp"
+            app:ahvCellCornerRadius="4dp"
+
+            app:ahvLabelGridGap="10dp"
+            app:ahvLabelTextColor="#FFFFFF"
+            app:ahvLabelTextSize="14sp"
+
+            app:ahvHeaderGridGap="8dp"
+            app:ahvHeaderTextColor="#888888"
+            app:ahvHeaderTextSize="12sp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/llContent2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1c1c1c"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="30dp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/llContent1">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:id="@+id/tvDateRange2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Jan 05 - Jan 11"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageButton
+                    android:id="@+id/btnPrevWeek2"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Previous Week"
+                    android:padding="8dp"
+                    android:src="@android:drawable/ic_media_previous"
+                    app:tint="#FFFFFF" />
+
+                <View
+                    android:layout_width="16dp"
+                    android:layout_height="0dp" />
+
+                <ImageButton
+                    android:id="@+id/btnNextWeek2"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Next Week"
+                    android:padding="8dp"
+                    android:src="@android:drawable/ic_media_next"
+                    app:tint="#FFFFFF" />
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <com.logan.heatmapview.ActivityHeatmapView
+            android:id="@+id/activityHeatmapView2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            app:ahvInactiveColorEnd="#2B2A2C"
+            app:ahvInactiveColorStart="#2B2A2C"
+
+            app:ahvActiveColorStart="#ED1C91"
+            app:ahvActiveColorEnd="#FF6FBF"
+
+            app:ahvCellGap="9dp"
+            app:ahvCellCornerRadius="4dp"
+
+            app:ahvLabelGridGap="10dp"
+            app:ahvLabelTextColor="#FFFFFF"
+            app:ahvLabelTextSize="14sp"
+
+            app:ahvHeaderGridGap="8dp"
+            app:ahvHeaderTextColor="#888888"
+            app:ahvHeaderTextSize="12sp" />
+
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
