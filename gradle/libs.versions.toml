@@ -14,6 +14,7 @@ appcompat_version = "1.7.1"
 activity_version = "1.9.2"
 fragment_version = "1.8.3"
 constraint_layout_version = "2.2.1"
+activityHeatmapView-version = "1.0.0"
 
 [libraries]
 agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
@@ -29,6 +30,7 @@ androidx_appcompat = { module = "androidx.appcompat:appcompat", version.ref = "a
 androidx_activity = { module = "androidx.activity:activity-ktx", version.ref = "activity_version" }
 androidx_fragment = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment_version" }
 androidx_constraint_layout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraint_layout_version" }
+activityHeatmapView = { module = "io.github.logan0817:ActivityHeatmapView", version.ref = "activityHeatmapView-version" }
 
 [plugins]
 vanniktech-maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-maven-publish" }

@@ -70,6 +70,7 @@ tasks.withType<KotlinCompile>().configureEach {
 
 dependencies {
     implementation(projects.libraryAndroid)
+//    implementation(libs.activityHeatmapView)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity)
