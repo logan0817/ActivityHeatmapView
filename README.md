@@ -56,6 +56,24 @@ app:ahvHeaderTextColor = "#888888"
 app:ahvHeaderTextSize = "12sp" />
 ```
 
+## activityHeatmapView.setData 使用示例
+
+```kotlin
+// 生成并设置动态行数的数据
+// 传入自定义 X 轴标签
+val dateLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+val labels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+val data = labels.map {
+    //这里的示例逻辑模拟供参考
+    // 1. 随机决定这一行有几天是激活的
+    val activeCount = (1..12).random()
+    // 2. 生成 0-12 的列表，打乱顺序，取前 activeCount 个，并转为 Set
+    val randomIndices = (0..12).shuffled().take(activeCount).toSet()
+    ActivityHeatmapView.RowData(it, randomIndices)
+}
+activityHeatmapView.setData(data, headers = dateLabels)
+```
+
 ## 控件参数及含义
 
 | *参数名*                 |    *参数取值* |     *参数含义*      |

@@ -58,6 +58,24 @@
     app:ahvHeaderTextSize = "12sp" />
 ```
 
+## activityHeatmapView.setData Usage Example
+
+```kotlin
+// Generate and set data with dynamic row counts
+// Pass in custom X-axis labels
+val dateLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+val labels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+val data = labels.map {
+    //The example logic simulation here is for reference.
+    // 1. The number of days this row is active is randomly determined.
+    val activeCount = (1..12).random()
+    // 2. Generate a list from 0 to 12, shuffle it, take the first activeCount elements, and convert them to a Set.
+    val randomIndices = (0..12).shuffled().take(activeCount).toSet()
+    ActivityHeatmapView.RowData(it, randomIndices)
+}
+activityHeatmapView.setData(data, headers = dateLabels)
+```
+
 ## Attributes & Description
 
 | *Attribute Name* |  *Value Type* |       *Description* |

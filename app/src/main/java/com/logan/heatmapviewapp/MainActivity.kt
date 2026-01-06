@@ -89,22 +89,18 @@ class MainActivity : AppCompatActivity() {
 
         binding.tvDateRange1.text = "$startDate - $endDate"
 
-
-        val labels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
         // 2. 生成并设置动态行数的数据
         // 传入自定义 X 轴标签
         val dateLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
+        val labels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
         val data = labels.map {
             // 1. 随机决定这一行有几天是激活的
             val activeCount = (1..12).random()
-
             // 2. 生成 0-12 的列表，打乱顺序，取前 activeCount 个，并转为 Set
             val randomIndices = (0..12).shuffled().take(activeCount).toSet()
 
             ActivityHeatmapView.RowData(it, randomIndices)
         }
-
         binding.activityHeatmapView1.setData(data, headers = dateLabels)
 
     }
@@ -123,19 +119,15 @@ class MainActivity : AppCompatActivity() {
 
         binding.tvDateRange2.text = "$startDate - $endDate"
 
-
-        val labels = listOf("Pulse", "Track", "Lift", "Strength")
         // 2. 生成并设置动态行数的数据
         // 传入自定义 X 轴标签
         val dateLabels = listOf("M", "T", "W", "T", "F", "S", "S")
-
+        val labels = listOf("Pulse", "Track", "Lift", "Strength")
         val data = labels.map {
             // 1. 随机决定这一行有几天是激活的
             val activeCount = (1..7).random()
-
             // 2. 生成 0-12 的列表，打乱顺序，取前 activeCount 个，并转为 Set
             val randomIndices = (0..7).shuffled().take(activeCount).toSet()
-
             ActivityHeatmapView.RowData(it, randomIndices)
         }
 
