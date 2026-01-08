@@ -2,9 +2,18 @@
 
 中文文档 [Chinese Document](./README.md)
 
-* **ActivityHeatmapView**
-* This is a custom View used to display frequency data, similar to GitHub's contribution graph or fitness workout logs.
+# ActivityHeatmapView
 
+A highly customizable, high-performance Android heatmap component (similar to GitHub's Contribution Graph).
+It is suitable for displaying activity levels, frequency distributions, or other grid-based time-series data.
+
+## ✨ Key Features
+
+* **Flexible Layout**: Supports free configuration of X-axis (Top/Bottom) and Y-axis (Left/Right) positions.
+* **Smart Adaptation**: Automatically calculates column count, label width, and layout offsets; perfectly adapts to Padding.
+* **Easy-to-use API**: Provides a generic `setData` method to directly bind business list data.
+* **Strong Interactivity**: Built-in click event listener.
+* **Visual Enhancements**: Supports dynamic heatmap colors (`ColorAdapter`) and custom cell drawing (`CellAdapter`).
 ## Installation
 
 ### Gradle:
@@ -23,7 +32,7 @@
    [![Maven Central](https://img.shields.io/maven-central/v/io.github.logan0817/ActivityHeatmapView.svg?label=Latest%20Release)](https://central.sonatype.com/artifact/io.github.logan0817/ActivityHeatmapView)
 
     ```gradle
-    implementation 'io.github.logan0817:ActivityHeatmapView:1.0.0' // Replace with the latest version shown in the badge above
+    implementation 'io.github.logan0817:ActivityHeatmapView:1.0.1' // Replace with the latest version shown in the badge above
     ```
 
 ## Demo
@@ -35,7 +44,7 @@
 ## Usage: ActivityHeatmapView
 
 
-    <com.logan.shinningviewapp.ActivityHeatmapView
+    <com.logan.heatmapview.ActivityHeatmapView
         android:id = "@+id/activityHeatmapView"
         android:layout_width = "match_parent"
         android:layout_height = "wrap_content"
@@ -52,50 +61,113 @@
         app:ahvLabelGridGap = "10dp"
         app:ahvLabelTextColor = "#FFFFFF"
         app:ahvLabelTextSize = "14sp"
+        app:ahvLabelPosition="left"
     
         app:ahvHeaderGridGap = "8dp"
         app:ahvHeaderTextColor = "#888888"
-        app:ahvHeaderTextSize = "12sp" />
+        app:ahvHeaderTextSize = "12sp"
+        app:ahvHeaderPosition="bottom"/>
 
 
-## activityHeatmapView.setData Usage Example
+### 2. Data Binding
+Use the generic setData method to pass your business data list directly.
 
 ```kotlin
-// Generate and set data with dynamic row counts
-// Pass in custom X-axis labels
-val dateLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-val labels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-val data = labels.map {
-    //The example logic simulation here is for reference.
-    // 1. The number of days this row is active is randomly determined.
-    val activeCount = (1..12).random()
-    // 2. Generate a list from 0 to 12, shuffle it, take the first activeCount elements, and convert them to a Set.
-    val randomIndices = (0..12).shuffled().take(activeCount).toSet()
-    ActivityHeatmapView.RowData(it, randomIndices)
-}
-activityHeatmapView.setData(data, headers = dateLabels)
+// 1. // 1. Assume your business data structure is as follows
+data class DailyStep(val day: Int, val count: Int)
+data class UserData(val name: String, val history: List<DailyStep>)
+
+// 2. Prepare data
+val userList = listOf(
+    UserData(name = "Logan", history = listOf(DailyStep(day = 1, count = 5000))),
+    UserData(name = "Allen",  history = listOf(DailyStep(day = 1, count = 7000), DailyStep(day = 3, count = 3000))),
+    UserData(name = "Levi",  history = listOf(DailyStep(day = 2, count = 8000), DailyStep(day = 5, count = 9000))),
+    UserData(name = "Nicely",  history = listOf())
+)
+
+val weekHeaders = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+// 3. Bind data
+heatmapView.setData(
+    items = userList,
+    labelExtractor = { user -> user.name },       // Extract row label
+    dataExtractor = { user -> user.history },     // Extract data list for the row
+    // Scenario A: Must pass indexMapper (sparse/unordered data, e.g., date day=1 maps to index=0)
+    // Scenario B: Can omit indexMapper (continuous/fixed data, defaults to List index)
+    indexMapper = { step -> step.day - 1 },
+    headers = weekHeaders                          // Set headers, the component automatically sets column count based on header count
+)
 ```
+
+## Advanced Usage
+
+### 1. Interaction: Click Event Listener
+
+    heatmapView.setOnCellClickListener { rowIndex, colIndex, data ->
+        val stepData = data as? DailyStep
+        val msg = if (stepData != null) {
+            "Day ${colIndex + 1}: ${stepData.count} steps"
+        } else {
+            "No record for this day"
+        }
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
+
+### Visuals: Dynamic Heatmap Colors (ColorAdapter)
+Display different shades of color based on data values to achieve a true "heatmap" effect.. Refer to the DEMO code for examples.
+
+    heatmapView.setColorAdapter { data ->
+    val stepData = data as? DailyStep ?: return@setColorAdapter null
+    
+        // Example: Return varying opacity of green based on step count
+        val ratio = (stepData.count / 20000.0).coerceIn(0.2, 1.0)
+        val alpha = (255 * ratio).toInt()
+        Color.argb(alpha, 0, 255, 0) // Return dynamically calculated ARGB color
+    }
+
+
+### 3. Custom Drawing: Cell Content (CellAdapter)
+Draw icons, text, or any arbitrary content inside the blocks. Refer to the DEMO code for examples.
+
+    heatmapView.setCellAdapter(object : ActivityHeatmapView.CellAdapter {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textSize = 24f; textAlign = Paint.Align.CENTER
+        }
+    
+        override fun onDrawCell(canvas: Canvas, cellRect: RectF, rowIndex: Int, colIndex: Int, data: Any?) {
+            val stepData = data as? DailyStep ?: return
+            // Example: If steps exceed 5000, draw a star in the center of the cell
+            if (stepData.count > 5000) {
+                val baseline = cellRect.centerY() - (paint.descent() + paint.ascent()) / 2
+                canvas.drawText("★", cellRect.centerX(), baseline, paint)
+            }
+        }
+    })
+
 
 ## Attributes & Description
 
-| *Attribute Name* |  *Value Type* |       *Description* |
-| :-------------------- | :-----------: | :-----------------------: |
-| ahvActiveColorStart   |     color     |  Active Gradient - Start  |
-| ahvActiveColorEnd     |     color     |   Active Gradient - End   |
-|                       |               |                           |
-| ahvInactiveColorStart |     color     | Inactive Gradient - Start |
-| ahvInactiveColorEnd   |     color     |  Inactive Gradient - End  |
-|                       |               |                           |
-| ahvCellGap            |   dimension   |   Spacing between cells   |
-| ahvCellCornerRadius   |   dimension   |    Cell corner radius     |
-|                       |               |                           |
-| ahvLabelGridGap       |   dimension   |    Y-Axis (Label) Gap     |
-| ahvLabelTextColor     |     color     |   Y-Axis (Label) Color    |
-| ahvLabelTextSize      |   dimension   | Y-Axis (Label) Text Size  |
-|                       |               |                           |
-| ahvHeaderGridGap      |   dimension   |    X-Axis (Header) Gap    |
-| ahvHeaderTextColor    |     color     |   X-Axis (Header) Color   |
-| ahvHeaderTextSize     |   dimension   | X-Axis (Header) Text Size |
+| *Attribute Name* |  *Value Type* |            *Description*             |
+| :-------------------- | :-----------: |:------------------------------------:|
+| ahvActiveColorStart   |     color     |       Active Gradient - Start        |
+| ahvActiveColorEnd     |     color     |        Active Gradient - End         |
+|                       |               |                                      |
+| ahvInactiveColorStart |     color     |      Inactive Gradient - Start       |
+| ahvInactiveColorEnd   |     color     |       Inactive Gradient - End        |
+|                       |               |                                      |
+| ahvCellGap            |   dimension   |        Spacing between cells         |
+| ahvCellCornerRadius   |   dimension   |          Cell corner radius          |
+|                       |               |                                      |
+| ahvLabelGridGap       |   dimension   |          Y-Axis (Label) Gap          |
+| ahvLabelTextColor     |     color     |         Y-Axis (Label) Color         |
+| ahvLabelTextSize      |   dimension   |       Y-Axis (Label) Text Size       |
+| ahvLabelPosition      | dimension |  Y-Axis Label position: left, right  |
+|                       |               |                                      |
+| ahvHeaderGridGap      |   dimension   |         X-Axis (Header) Gap          |
+| ahvHeaderTextColor    |     color     |        X-Axis (Header) Color         |
+| ahvHeaderTextSize     |   dimension   |      X-Axis (Header) Text Size       |
+| ahvHeaderPosition     | dimension | X-Axis Header position: top , bottom |
 
 
 ### If you have any questions, feel free to open an issue.

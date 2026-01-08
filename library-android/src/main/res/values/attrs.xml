@@ -22,6 +22,10 @@
         <attr name="ahvLabelTextColor" format="color" />
         <!--Y轴 (Label)文字大小-->
         <attr name="ahvLabelTextSize" format="dimension" />
+        <attr name="ahvLabelPosition" format="enum">
+            <enum name="left" value="0" />
+            <enum name="right" value="1" />
+        </attr>
 
         <!--X轴 (Header)间距-->
         <attr name="ahvHeaderGridGap" format="dimension" />
@@ -29,5 +33,9 @@
         <attr name="ahvHeaderTextColor" format="color" />
         <!--X轴 (Header)文字大小-->
         <attr name="ahvHeaderTextSize" format="dimension" />
+        <attr name="ahvHeaderPosition" format="enum">
+            <enum name="top" value="0" />
+            <enum name="bottom" value="1" />
+        </attr>
     </declare-styleable>
 </resources>

@@ -1,314 +1,455 @@
 package com.logan.heatmapview
 
-
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Shader
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.MotionEvent
 import android.view.View
 import kotlin.math.abs
 import kotlin.math.max
 
 /**
- * 活动热力图组件 (ActivityHeatmapView)
+ * **ActivityHeatmapView**
  *
- * 这是一个用于展示频率数据的自定义 View，类似于 GitHub 的提交记录或健身打卡记录。
+ * 一个高度可定制、高性能的 Android 热力图组件（类似于 GitHub 的贡献图）。
+ * 适用于展示活跃度、频率分布或其他基于网格的时间序列数据。
  *
- * ## 主要特性：
- * 1. **自适应布局**：自动测量左侧 Label 宽度，确保文字不被遮挡。
- * 2. **高度可配**：支持通过 XML (ahv前缀属性) 或代码配置颜色、间距、圆角和文字大小。
- * 3. **视觉增强**：支持方块的垂直线性渐变色。
- * 4. **标准兼容**：完全支持 Android 的 padding 属性 (paddingLeft, paddingTop 等)。
- * 5. **性能优化**：绘图计算外提，避免 onDraw 中频繁对象分配。
- * 6. **动态 X 轴**：支持动态设置列数 (columnCount)，由 headers 数量决定。
+ * ### 主要特性：
+ * 1. **灵活布局**：支持 X 轴（顶部/底部）和 Y 轴（左侧/右侧）位置的自由配置。
+ * 2. **智能适配**：自动计算列数、标签宽度和布局偏移，完美适配 Padding。
+ * 3. **高性能**：优化的绘图逻辑，采用 Shader 缓存与对象复用，减少 GC。
+ * 4. **强交互**：内置点击事件监听，支持获取点击位置的数据。
+ * 5. **视觉增强**：支持垂直渐变色、圆角以及通过 Adapter 完全自定义单元格绘制。
+ * 6. **极简 API**：提供泛型方法 [setData] 简化数据绑定.
  *
- * ## 使用方式：
- * 在 XML 中引入全类名，并配置 ahv... 属性。
- * 在代码中调用 [setData] 方法填充数据。
+ * @author Logan
  */
 class ActivityHeatmapView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    // ============================================================================================
-    // 1. 数据模型定义
-    // ============================================================================================
+    /**
+     * 单元格点击监听器。
+     */
+    fun interface OnCellClickListener {
+        /**
+         * 当单元格被点击时触发。
+         *
+         * @param rowIndex 点击的行索引 (0 ~ rowCount-1)
+         * @param colIndex 点击的列索引 (0 ~ columnCount-1)
+         * @param data 该单元格绑定的数据对象 (如果该位置无数据则为 null)
+         */
+        fun onCellClick(rowIndex: Int, colIndex: Int, data: Any?)
+    }
 
     /**
-     * 单行数据模型
-     * @param label 左侧显示的标签文本 (如 "Running", "Reading")
-     * @param activeIndices 该行中处于激活状态的列索引集合 (0代表第一列)
+     * 颜色适配器。
+     * 用于根据单元格的具体数据值，动态决定颜色（实现真正的“热力”深浅效果）。
      */
-    data class RowData(val label: String, val activeIndices: Set<Int>)
+    fun interface ColorAdapter {
+        /**
+         * 获取单元格颜色。
+         *
+         * @param data 单元格数据
+         * @return 颜色值的 Int (ARGB)。如果返回 null，则组件会使用默认配置的 active/inactive 颜色。
+         */
+        fun getCellColor(data: Any?): Int?
+    }
+
+    /**
+     * 自定义单元格绘制适配器。
+     * 当你需要绘制文字、图标或其他复杂内容到单元格内时实现此接口。
+     */
+    interface CellAdapter {
+        /**
+         * 绘制单元格内容。
+         *
+         * @param canvas 画布
+         * @param cellRect 当前单元格的绘制区域 (RectF)
+         * @param rowIndex 行索引
+         * @param colIndex 列索引
+         * @param data 单元格数据
+         */
+        fun onDrawCell(canvas: Canvas, cellRect: RectF, rowIndex: Int, colIndex: Int, data: Any?)
+    }
+
+    /** Y 轴标签位置枚举 */
+    enum class LabelPosition(val value: Int) {
+        LEFT(0), RIGHT(1);
+
+        companion object {
+            fun fromInt(value: Int) = entries.find { it.value == value } ?: LEFT
+        }
+    }
+
+    /** X 轴表头位置枚举 */
+    enum class HeaderPosition(val value: Int) {
+        TOP(0), BOTTOM(1);
+
+        companion object {
+            fun fromInt(value: Int) = entries.find { it.value == value } ?: BOTTOM
+        }
+    }
+
+    /**
+     * 内部使用的标准行数据模型。
+     * 使用 private 封装，避免对外暴露复杂的 Map 结构。
+     *
+     * @param label 行标题
+     * @param cellData 列索引与数据的映射表 (Map<ColumnIndex, Data>)，用于 O(1) 查找。
+     */
+    private data class RowData(val label: String, val cellData: Map<Int, Any>)
 
     // 内部数据持有
     private var rowDataList: List<RowData> = emptyList()
-    // 默认的底部表头 (周一到周日)
     private var columnHeaders: List<String> = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-    // ============================================================================================
-    // 2. 绘图属性 (Paint & Config)
-    // ============================================================================================
+    // 回调引用
+    private var cellAdapter: CellAdapter? = null
+    private var colorAdapter: ColorAdapter? = null
+    private var onCellClickListener: OnCellClickListener? = null
 
-    // 文字画笔 (抗锯齿)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    // 方块画笔 (抗锯齿)
     private val cellPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    // --- 颜色配置 (默认值) ---
-    private var activeColorStart = Color.parseColor("#116329")   // 激活色-顶
-    private var activeColorEnd = Color.parseColor("#2DA44E")     // 激活色-底
-    private var inactiveColorStart = Color.parseColor("#222222") // 未激活-顶
-    private var inactiveColorEnd = Color.parseColor("#222222")   // 未激活-底
+    // 默认颜色配置
+    private var activeColorStart = Color.parseColor("#116329")
+    private var activeColorEnd = Color.parseColor("#2DA44E")
+    private var inactiveColorStart = Color.parseColor("#222222")
+    private var inactiveColorEnd = Color.parseColor("#222222")
 
-    // --- 尺寸配置 (默认值，初始化时会转为 px) ---
-    private var cellGap = dpToPx(8f)          // 方块间距
-    private var cellCornerRadius = dpToPx(4f) // 方块圆角
-
-    // Y轴 (Label) 相关
+    // 尺寸配置
+    private var cellGap = dpToPx(8f)
+    private var cellCornerRadius = dpToPx(4f)
     private var labelGridGap = dpToPx(10f)
     private var labelTextColor = Color.WHITE
     private var labelTextSize = spToPx(14f)
-
-    // X轴 (Header) 相关
+    private var labelPosition = LabelPosition.LEFT
     private var headerGridGap = dpToPx(10f)
     private var headerTextColor = Color.GRAY
     private var headerTextSize = spToPx(12f)
+    private var headerPosition = HeaderPosition.BOTTOM
 
-    // --- 内部计算缓存变量 ---
-    private var cellSide = 0f          // 计算出的每个方块边长
-    private var maxLabelWidth = 0f     // 左侧 Label 区域的最大宽度
-    private var bottomHeaderHeight = 0f // 底部 Header 区域的总高度
-
-    // 从 val 改为 var，默认为 12
+    // 内部计算缓存 (在 onMeasure 中计算，供 onDraw 使用)
+    private var cellSide = 0f
+    private var maxLabelWidth = 0f
+    private var labelAreaTotalWidth = 0f
+    private var headerAreaTotalHeight = 0f
     private var columnCount = 12
 
-    // ============================================================================================
-    // 3. 初始化 (解析 XML 属性)
-    // ============================================================================================
+    // 布局偏移量 (用于 Touch 事件坐标转换和绘制偏移)
+    private var gridOffsetX = 0f
+    private var gridOffsetY = 0f
+
+    // 临时对象 (避免在 onDraw 中频繁 GC)
+    private val tempCellRect = RectF()
+
     init {
         attrs?.let {
-            val typedArray = context.obtainStyledAttributes(it, R.styleable.ActivityHeatmapView)
+            val ta = context.obtainStyledAttributes(it, R.styleable.ActivityHeatmapView)
 
-            // --- 1. 解析颜色 ---
-            activeColorStart = typedArray.getColor(R.styleable.ActivityHeatmapView_ahvActiveColorStart, activeColorStart)
-            activeColorEnd = typedArray.getColor(R.styleable.ActivityHeatmapView_ahvActiveColorEnd, activeColorStart)
-            inactiveColorStart = typedArray.getColor(R.styleable.ActivityHeatmapView_ahvInactiveColorStart, inactiveColorStart)
-            inactiveColorEnd = typedArray.getColor(R.styleable.ActivityHeatmapView_ahvInactiveColorEnd, inactiveColorStart)
+            // 解析颜色
+            activeColorStart = ta.getColor(R.styleable.ActivityHeatmapView_ahvActiveColorStart, activeColorStart)
+            activeColorEnd = if (ta.hasValue(R.styleable.ActivityHeatmapView_ahvActiveColorEnd)) {
+                ta.getColor(R.styleable.ActivityHeatmapView_ahvActiveColorEnd, activeColorStart)
+            } else activeColorStart
 
-            // --- 2. 解析 Y轴 (Label) ---
-            labelGridGap = typedArray.getDimension(R.styleable.ActivityHeatmapView_ahvLabelGridGap, labelGridGap)
-            labelTextColor = typedArray.getColor(R.styleable.ActivityHeatmapView_ahvLabelTextColor, labelTextColor)
-            labelTextSize = typedArray.getDimension(R.styleable.ActivityHeatmapView_ahvLabelTextSize, labelTextSize)
+            inactiveColorStart = ta.getColor(R.styleable.ActivityHeatmapView_ahvInactiveColorStart, inactiveColorStart)
+            inactiveColorEnd = if (ta.hasValue(R.styleable.ActivityHeatmapView_ahvInactiveColorEnd)) {
+                ta.getColor(R.styleable.ActivityHeatmapView_ahvInactiveColorEnd, inactiveColorStart)
+            } else inactiveColorStart
 
-            // --- 3. 解析 X轴 (Header) ---
-            headerGridGap = typedArray.getDimension(R.styleable.ActivityHeatmapView_ahvHeaderGridGap, headerGridGap)
-            headerTextColor = typedArray.getColor(R.styleable.ActivityHeatmapView_ahvHeaderTextColor, headerTextColor)
-            headerTextSize = typedArray.getDimension(R.styleable.ActivityHeatmapView_ahvHeaderTextSize, headerTextSize)
+            // 解析尺寸与位置
+            labelGridGap = ta.getDimension(R.styleable.ActivityHeatmapView_ahvLabelGridGap, labelGridGap)
+            labelTextColor = ta.getColor(R.styleable.ActivityHeatmapView_ahvLabelTextColor, labelTextColor)
+            labelTextSize = ta.getDimension(R.styleable.ActivityHeatmapView_ahvLabelTextSize, labelTextSize)
+            labelPosition = LabelPosition.fromInt(ta.getInt(R.styleable.ActivityHeatmapView_ahvLabelPosition, labelPosition.value))
 
-            // --- 4. 解析通用尺寸 ---
-            cellGap = typedArray.getDimension(R.styleable.ActivityHeatmapView_ahvCellGap, cellGap)
-            cellCornerRadius = typedArray.getDimension(R.styleable.ActivityHeatmapView_ahvCellCornerRadius, cellCornerRadius)
+            headerGridGap = ta.getDimension(R.styleable.ActivityHeatmapView_ahvHeaderGridGap, headerGridGap)
+            headerTextColor = ta.getColor(R.styleable.ActivityHeatmapView_ahvHeaderTextColor, headerTextColor)
+            headerTextSize = ta.getDimension(R.styleable.ActivityHeatmapView_ahvHeaderTextSize, headerTextSize)
+            headerPosition = HeaderPosition.fromInt(ta.getInt(R.styleable.ActivityHeatmapView_ahvHeaderPosition, headerPosition.value))
 
-            typedArray.recycle()
+            cellGap = ta.getDimension(R.styleable.ActivityHeatmapView_ahvCellGap, cellGap)
+            cellCornerRadius = ta.getDimension(R.styleable.ActivityHeatmapView_ahvCellCornerRadius, cellCornerRadius)
+
+            ta.recycle()
         }
     }
 
-    // ============================================================================================
-    // 4. 公共 API
-    // ============================================================================================
+    /**
+     * **设置数据 (泛型入口)**
+     *
+     * 自动将您的业务列表 `List<T>` 转换为组件内部所需的结构。
+     *
+     * @param items 您的业务数据列表 (例如 `List<User>`)
+     * @param labelExtractor 从 T 中提取行标题的 Lambda (例如 `{ user.name }`)
+     * @param dataExtractor 从 T 中提取该行数据列表的 Lambda (例如 `{ user.records }`)
+     * * @param indexMapper (可选) 确定数据属于第几列。
+     * - 如果传入：根据规则计算 (适用于稀疏数据，如按日期存储)。
+     * - 如果不传：默认使用 List 的下标 (0, 1, 2...) (适用于连续数据，如固定7天的数组)。
+     * 返回的索引必须 >= 0，否则该数据会被忽略。
+     * @param headers (可选) 自定义 X 轴表头。若不传则保持当前表头。传入时会自动更新列数。
+     */
+    fun <T, D> setData(
+        items: List<T>,
+        labelExtractor: (T) -> String,
+        dataExtractor: (T) -> List<D>,
+        indexMapper: ((D) -> Int)? = null,
+        headers: List<String>? = null
+    ) {
+        val internalData = items.map { item ->
+            val label = labelExtractor(item)
+            val details = dataExtractor(item)
+
+            // 将 List 转换为 Map 以优化后续查找性能
+            val map = mutableMapOf<Int, Any>()
+            details.forEachIndexed { listIndex, detailItem ->
+                // 如果提供了 mapper，就用 mapper 算；否则直接用 listIndex
+                val colIndex = indexMapper?.invoke(detailItem) ?: listIndex
+                if (colIndex >= 0) {
+                    map[colIndex] = detailItem as Any
+                }
+            }
+            RowData(label, map)
+        }
+        updateViewData(internalData, headers)
+    }
 
     /**
-     * 设置显示数据
-     * @param data 行数据列表
-     * @param headers (可选) 自定义底部 X 轴的文字列表。
-     * 如果传入 headers，将根据 headers 的数量自动更新 columnCount。
+     * 内部更新数据并刷新 UI。
      */
-    fun setData(data: List<RowData>, headers: List<String>? = null) {
+    private fun updateViewData(data: List<RowData>, headers: List<String>? = null) {
         this.rowDataList = data
         if (headers != null) {
             this.columnHeaders = headers
-            // 列数跟随表头数量动态变化
             this.columnCount = headers.size
         }
-        // 数据变更可能影响行数和宽度计算，必须重新请求布局
         requestLayout()
         invalidate()
     }
 
-    // --- 动态配置 Setters (支持链式调用或独立调用) ---
+    /** 设置单元格点击监听器 */
+    fun setOnCellClickListener(listener: OnCellClickListener?) {
+        this.onCellClickListener = listener
+    }
+
+    /** 设置自定义单元格内容绘制器 */
+    fun setCellAdapter(adapter: CellAdapter?) {
+        this.cellAdapter = adapter; invalidate()
+    }
+
+    /** 设置动态颜色适配器 */
+    fun setColorAdapter(adapter: ColorAdapter?) {
+        this.colorAdapter = adapter; invalidate()
+    }
+
+    // --- 样式配置 Setters (支持链式调用的写法风格) ---
+
+    fun setLabelPosition(pos: LabelPosition) {
+        this.labelPosition = pos; requestLayout(); invalidate()
+    }
+
+    fun setHeaderPosition(pos: HeaderPosition) {
+        this.headerPosition = pos; requestLayout(); invalidate()
+    }
 
     fun setLabelTextSize(sizePx: Float) {
-        this.labelTextSize = sizePx
-        requestLayout()
-        invalidate()
+        this.labelTextSize = sizePx; requestLayout(); invalidate()
     }
 
     fun setHeaderTextSize(sizePx: Float) {
-        this.headerTextSize = sizePx
-        requestLayout()
-        invalidate()
+        this.headerTextSize = sizePx; requestLayout(); invalidate()
     }
 
     fun setLabelGridGap(gapInPx: Float) {
-        this.labelGridGap = gapInPx
-        requestLayout()
-        invalidate()
+        this.labelGridGap = gapInPx; requestLayout(); invalidate()
     }
 
     fun setHeaderGridGap(gapInPx: Float) {
-        this.headerGridGap = gapInPx
-        requestLayout()
-        invalidate()
+        this.headerGridGap = gapInPx; requestLayout(); invalidate()
     }
 
-    // ============================================================================================
-    // 5. 测量逻辑 (onMeasure)
-    // ============================================================================================
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        // 如果没有设置监听器，则不消耗事件，允许父布局拦截
+        if (onCellClickListener == null) return super.onTouchEvent(event)
+
+        if (event.action == MotionEvent.ACTION_UP) {
+            handleCellClick(event.x, event.y)
+            performClick()
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean = super.performClick()
+
+    /**
+     * 处理点击坐标转换
+     */
+    private fun handleCellClick(x: Float, y: Float) {
+        if (rowDataList.isEmpty() || cellSide <= 0) return
+
+        // 1. 坐标系转换 (减去 Padding 和 布局偏移)
+        val effectiveX = x - paddingLeft - gridOffsetX
+        val effectiveY = y - paddingTop - gridOffsetY
+
+        // 2. 网格整体边界检查
+        val gridWidth = columnCount * (cellSide + cellGap) - cellGap
+        val gridHeight = rowDataList.size * (cellSide + cellGap) - cellGap
+        if (effectiveX < 0 || effectiveX > gridWidth || effectiveY < 0 || effectiveY > gridHeight) return
+
+        // 3. 计算点击的行列索引
+        val colIndex = (effectiveX / (cellSide + cellGap)).toInt()
+        val rowIndex = (effectiveY / (cellSide + cellGap)).toInt()
+
+        // 4. 精确判定 (确保点在方块内，而不是点在间隙里)
+        if (rowIndex in rowDataList.indices && colIndex in 0 until columnCount) {
+            val cellLeft = colIndex * (cellSide + cellGap)
+            val cellTop = rowIndex * (cellSide + cellGap)
+
+            if (effectiveX >= cellLeft && effectiveX <= cellLeft + cellSide &&
+                effectiveY >= cellTop && effectiveY <= cellTop + cellSide
+            ) {
+
+                val data = rowDataList[rowIndex].cellData[colIndex]
+                onCellClickListener?.onCellClick(rowIndex, colIndex, data)
+            }
+        }
+    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val totalWidth = MeasureSpec.getSize(widthMeasureSpec)
-        // 计算内容实际可用宽度 (总宽 - 左右内边距)
         val availableWidth = totalWidth - paddingLeft - paddingRight
 
-        // --- A. 计算左侧 Label 占用宽度 ---
+        // A. 测量 Label 区域宽度
         textPaint.textSize = labelTextSize
         maxLabelWidth = 0f
-        // 遍历找到最长的文字宽度，避免截断
         rowDataList.forEach {
             val w = textPaint.measureText(it.label)
             if (w > maxLabelWidth) maxLabelWidth = w
         }
-        // 如果有数据，左侧宽度 = 文字宽 + 间距
-        val leftAreaWidth = if (rowDataList.isNotEmpty()) maxLabelWidth + labelGridGap else 0f
+        labelAreaTotalWidth = if (rowDataList.isNotEmpty()) maxLabelWidth + labelGridGap else 0f
 
-        // --- B. 计算网格方块大小 ---
-        val gridAvailableWidth = availableWidth - leftAreaWidth
-        // 确保宽度不为负数
+        // B. 计算方块边长
+        val gridAvailableWidth = availableWidth - labelAreaTotalWidth
         val validGridWidth = max(0f, gridAvailableWidth)
+        cellSide = if (columnCount > 0) {
+            (validGridWidth - ((columnCount - 1) * cellGap)) / columnCount
+        } else 0f
 
-        // 增加 columnCount > 0 的安全检查，防止除零异常
-        if (columnCount > 0) {
-            // 方块边长 = (可用宽 - (列数-1)*间距) / 列数
-            cellSide = (validGridWidth - ((columnCount - 1) * cellGap)) / columnCount
-        } else {
-            cellSide = 0f
-        }
-
-        // --- C. 计算底部 Header 高度 ---
+        // C. 测量 Header 区域高度
         textPaint.textSize = headerTextSize
-        val fontMetrics = textPaint.fontMetrics
-        // 文字纯高度 = Abs(Top) + Abs(Bottom)
-        val textHeight = abs(fontMetrics.ascent) + abs(fontMetrics.descent)
-        bottomHeaderHeight = headerGridGap + textHeight
+        val fm = textPaint.fontMetrics
+        headerAreaTotalHeight = headerGridGap + abs(fm.ascent) + abs(fm.descent)
 
-        // --- D. 计算 View 总高度 ---
+        // D. 预计算偏移量 (供 onDraw 和 onTouchEvent 共享)
+        gridOffsetX = if (labelPosition == LabelPosition.LEFT) labelAreaTotalWidth else 0f
+        gridOffsetY = if (headerPosition == HeaderPosition.TOP) headerAreaTotalHeight else 0f
+
+        // E. 计算 View 总高度
         val rowCount = max(rowDataList.size, 0)
-        val contentHeight = if (rowCount > 0) {
-            // 内容高 = (行数 * 边长) + (行间距) + 底部高度
-            (rowCount * cellSide) + ((rowCount - 1) * cellGap) + bottomHeaderHeight
-        } else {
-            0f
-        }
-
-        // 最终高度 = 内容高 + 上下内边距
-        val finalHeight = contentHeight + paddingTop + paddingBottom
+        val contentGridHeight = if (rowCount > 0) {
+            (rowCount * cellSide) + ((rowCount - 1) * cellGap)
+        } else 0f
+        val finalHeight = contentGridHeight + headerAreaTotalHeight + paddingTop + paddingBottom
         setMeasuredDimension(totalWidth, finalHeight.toInt())
     }
-
-    // ============================================================================================
-    // 6. 绘制逻辑 (onDraw)
-    // ============================================================================================
 
     override fun onDraw(canvas: Canvas) {
         if (rowDataList.isEmpty()) return
 
-        // --- 性能优化：将不变的 Metrics 计算移出循环 ---
-
-        // 1. 预计算 Label 的垂直居中偏移量
+        // 预计算字体 Metrics (垂直居中/基线)
         textPaint.textSize = labelTextSize
-        var fontMetrics = textPaint.fontMetrics
-        // 居中公式偏移量
-        val labelBaselineOffset = -(fontMetrics.bottom + fontMetrics.top) / 2
+        var fm = textPaint.fontMetrics
+        val labelBaselineOffset = -(fm.bottom + fm.top) / 2
 
-        // 2. 预计算 Header 的基线偏移量
         textPaint.textSize = headerTextSize
-        fontMetrics = textPaint.fontMetrics
-        val headerAscentAbs = abs(fontMetrics.ascent)
+        fm = textPaint.fontMetrics
+        val headerAscentAbs = abs(fm.ascent)
 
-        // --- 开始遍历绘制 ---
         rowDataList.forEachIndexed { rowIndex, row ->
-            // 计算当前行的 Y 坐标 (注意加上 paddingTop)
-            val topY = paddingTop + rowIndex * (cellSide + cellGap)
-            val bottomY = topY + cellSide
+            val gridTopY = paddingTop + gridOffsetY + rowIndex * (cellSide + cellGap)
+            val gridBottomY = gridTopY + cellSide
 
-            // --- 步骤 1: 绘制左侧 Label ---
+            // --- 1. 绘制行标题 (Label) ---
             textPaint.color = labelTextColor
             textPaint.textSize = labelTextSize
-            textPaint.textAlign = Paint.Align.LEFT
+            val textBaseY = gridTopY + cellSide / 2 + labelBaselineOffset
 
-            // 文字 Y = 方块中心 + 偏移量
-            val textBaseY = topY + cellSide / 2 + labelBaselineOffset
-            canvas.drawText(row.label, paddingLeft.toFloat(), textBaseY, textPaint)
+            if (labelPosition == LabelPosition.LEFT) {
+                textPaint.textAlign = Paint.Align.LEFT
+                canvas.drawText(row.label, paddingLeft.toFloat(), textBaseY, textPaint)
+            } else {
+                textPaint.textAlign = Paint.Align.RIGHT
+                canvas.drawText(row.label, (width - paddingRight).toFloat(), textBaseY, textPaint)
+            }
 
-            // --- 步骤 2: 绘制右侧网格 ---
+            // --- 2. 准备默认渐变 Shader (每行复用以提升性能) ---
+            val activeShader = if (activeColorStart != activeColorEnd) {
+                LinearGradient(0f, gridTopY, 0f, gridBottomY, activeColorStart, activeColorEnd, Shader.TileMode.CLAMP)
+            } else null
+            val inactiveShader = if (inactiveColorStart != inactiveColorEnd) {
+                LinearGradient(0f, gridTopY, 0f, gridBottomY, inactiveColorStart, inactiveColorEnd, Shader.TileMode.CLAMP)
+            } else null
+
+            // --- 3. 绘制列 (网格单元格) ---
             for (colIndex in 0 until columnCount) {
-                // 计算当前列的 X 坐标 (注意加上 paddingLeft 和 左侧区域宽)
-                val leftArea = if (maxLabelWidth > 0) maxLabelWidth + labelGridGap else 0f
-                val leftX = paddingLeft + leftArea + colIndex * (cellSide + cellGap)
+                val leftX = paddingLeft + gridOffsetX + colIndex * (cellSide + cellGap)
                 val rightX = leftX + cellSide
+                tempCellRect.set(leftX, gridTopY, rightX, gridBottomY)
 
-                // 2.1 绘制方块 (Cell)
-                val isActive = row.activeIndices.contains(colIndex)
-                val startColor = if (isActive) activeColorStart else inactiveColorStart
-                val endColor = if (isActive) activeColorEnd else inactiveColorEnd
+                val cellData = row.cellData[colIndex]
+                val hasData = cellData != null
 
-                // 处理渐变色逻辑
-                if (startColor != endColor) {
-                    // 仅当颜色不同时创建渐变 Shader
-                    cellPaint.shader = LinearGradient(
-                        0f, topY, 0f, bottomY,
-                        startColor, endColor,
-                        Shader.TileMode.CLAMP
-                    )
-                } else {
+                // 颜色策略：ColorAdapter > 默认配置
+                val dynamicColor = colorAdapter?.getCellColor(cellData)
+                if (dynamicColor != null) {
                     cellPaint.shader = null
-                    cellPaint.color = startColor
+                    cellPaint.color = dynamicColor
+                } else {
+                    if (hasData) {
+                        cellPaint.shader = activeShader
+                        if (activeShader == null) cellPaint.color = activeColorStart
+                    } else {
+                        cellPaint.shader = inactiveShader
+                        if (inactiveShader == null) cellPaint.color = inactiveColorStart
+                    }
                 }
 
-                canvas.drawRoundRect(leftX, topY, rightX, bottomY, cellCornerRadius, cellCornerRadius, cellPaint)
+                canvas.drawRoundRect(tempCellRect, cellCornerRadius, cellCornerRadius, cellPaint)
 
-                // 2.2 绘制底部 Header (仅在最后一行绘制)
-                if (rowIndex == rowDataList.size - 1) {
+                // 回调自定义绘制
+                if (hasData) {
+                    cellAdapter?.onDrawCell(canvas, tempCellRect, rowIndex, colIndex, cellData)
+                }
+
+                // --- 4. 绘制列标题 (Header) ---
+                // 仅在紧邻 Header 的那一行绘制
+                val shouldDrawHeader = if (headerPosition == HeaderPosition.TOP) (rowIndex == 0) else (rowIndex == rowDataList.size - 1)
+                if (shouldDrawHeader) {
                     textPaint.color = headerTextColor
                     textPaint.textSize = headerTextSize
                     textPaint.textAlign = Paint.Align.CENTER
-
                     val headerText = columnHeaders.getOrNull(colIndex) ?: ""
-                    // Header Y = 方块底部 + 间距 + Ascent
-                    val baselineY = bottomY + headerGridGap + headerAscentAbs
 
-                    canvas.drawText(headerText, leftX + cellSide / 2, baselineY, textPaint)
+                    val headerY = if (headerPosition == HeaderPosition.TOP) {
+                        paddingTop.toFloat() + headerAscentAbs
+                    } else {
+                        gridBottomY + headerGridGap + headerAscentAbs
+                    }
+                    canvas.drawText(headerText, leftX + cellSide / 2, headerY, textPaint)
                 }
             }
         }
     }
 
-    // ============================================================================================
-    // 7. 辅助工具方法
-    // ============================================================================================
-
-    /** 将 dp 转换为 px */
-    private fun dpToPx(dp: Float): Float {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics)
-    }
-
-    /** 将 sp 转换为 px */
-    private fun spToPx(sp: Float): Float {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, resources.displayMetrics)
-    }
+    // --- 工具方法 ---
+    private fun dpToPx(dp: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics)
+    private fun spToPx(sp: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, resources.displayMetrics)
 }

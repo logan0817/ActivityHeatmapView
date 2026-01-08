@@ -24,7 +24,7 @@
         android:layout_height="wrap_content"
         android:background="#1c1c1c"
         android:orientation="vertical"
-        android:paddingHorizontal="20dp"
+        android:paddingHorizontal="10dp"
         android:paddingTop="20dp"
         android:paddingBottom="30dp"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -93,16 +93,18 @@
             app:ahvActiveColorStart="#116329"
             app:ahvActiveColorEnd="#2DA44E"
 
-            app:ahvCellGap="9dp"
-            app:ahvCellCornerRadius="4dp"
+            app:ahvCellGap="2dp"
+            app:ahvCellCornerRadius="2dp"
 
             app:ahvLabelGridGap="10dp"
             app:ahvLabelTextColor="#FFFFFF"
-            app:ahvLabelTextSize="14sp"
+            app:ahvLabelTextSize="8sp"
+            app:ahvLabelPosition="left"
 
             app:ahvHeaderGridGap="8dp"
             app:ahvHeaderTextColor="#888888"
-            app:ahvHeaderTextSize="12sp" />
+            app:ahvHeaderTextSize="7sp"
+            app:ahvHeaderPosition="bottom"/>
 
     </LinearLayout>
 
@@ -112,7 +114,7 @@
         android:layout_height="wrap_content"
         android:background="#1c1c1c"
         android:orientation="vertical"
-        android:paddingHorizontal="20dp"
+        android:paddingHorizontal="10dp"
         android:paddingTop="20dp"
         android:paddingBottom="30dp"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -181,16 +183,18 @@
             app:ahvActiveColorStart="#ED1C91"
             app:ahvActiveColorEnd="#FF6FBF"
 
-            app:ahvCellGap="9dp"
+            app:ahvCellGap="10dp"
             app:ahvCellCornerRadius="4dp"
 
             app:ahvLabelGridGap="10dp"
             app:ahvLabelTextColor="#FFFFFF"
             app:ahvLabelTextSize="14sp"
+            app:ahvLabelPosition="right"
 
             app:ahvHeaderGridGap="8dp"
             app:ahvHeaderTextColor="#888888"
-            app:ahvHeaderTextSize="12sp" />
+            app:ahvHeaderTextSize="12sp"
+            app:ahvHeaderPosition="top" />
 
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
