@@ -30,31 +30,29 @@
 
 > Demo.apk [点击下载](apk/app-debug.apk)
 
-## 背景流光效果效果使用：ShimmerView
+## 活动热力图组件 ActivityHeatmapView 使用：
 
-```kotlin
-<com.logan.shinningviewapp.ActivityHeatmapView
-android:id = "@+id/activityHeatmapView"
-android:layout_width = "match_parent"
-android:layout_height = "wrap_content"
-
-app:ahvInactiveColorEnd = "#2B2A2C"
-app:ahvInactiveColorStart = "#2B2A2C"
-
-app:ahvActiveColorStart = "#ED1C91"
-app:ahvActiveColorEnd = "#FF6FBF"
-
-app:ahvCellGap = "9dp"
-app:ahvCellCornerRadius = "4dp"
-
-app:ahvLabelGridGap = "10dp"
-app:ahvLabelTextColor = "#FFFFFF"
-app:ahvLabelTextSize = "14sp"
-
-app:ahvHeaderGridGap = "8dp"
-app:ahvHeaderTextColor = "#888888"
-app:ahvHeaderTextSize = "12sp" />
-```
+    <com.logan.shinningviewapp.ActivityHeatmapView
+        android:id = "@+id/activityHeatmapView"
+        android:layout_width = "match_parent"
+        android:layout_height = "wrap_content"
+        
+        app:ahvInactiveColorEnd = "#2B2A2C"
+        app:ahvInactiveColorStart = "#2B2A2C"
+        
+        app:ahvActiveColorStart = "#ED1C91"
+        app:ahvActiveColorEnd = "#FF6FBF"
+        
+        app:ahvCellGap = "9dp"
+        app:ahvCellCornerRadius = "4dp"
+        
+        app:ahvLabelGridGap = "10dp"
+        app:ahvLabelTextColor = "#FFFFFF"
+        app:ahvLabelTextSize = "14sp"
+        
+        app:ahvHeaderGridGap = "8dp"
+        app:ahvHeaderTextColor = "#888888"
+        app:ahvHeaderTextSize = "12sp" />
 
 ## activityHeatmapView.setData 使用示例
 
